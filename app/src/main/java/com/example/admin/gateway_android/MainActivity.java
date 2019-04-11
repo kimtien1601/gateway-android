@@ -15,6 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.squareup.picasso.MemoryPolicy;
+import com.squareup.picasso.NetworkPolicy;
 import com.squareup.picasso.Picasso;
 
 import java.io.BufferedReader;
@@ -47,14 +48,17 @@ public class MainActivity extends AppCompatActivity {
         btnCapture.setVisibility(View.INVISIBLE);
         txtImgTime.setVisibility(View.INVISIBLE);
         startTime = SystemClock.uptimeMillis();
-        customHandler.postDelayed(updateTimerThread, 5000);
-
+        customHandler.postDelayed(updateTimerThread, 1000);
+        ReadTextFileFromUrl();
 
         btnCapture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 LoadImageFromUrl(url_img);
-                captured=true;
+//                captured=true;
+                imgViewCrop.setVisibility(View.VISIBLE);
+                txtImgTime.setVisibility(View.VISIBLE);
+                txtImgTime.setText("Captured Time: " + captime);
             }
         });
     }
@@ -69,35 +73,33 @@ public class MainActivity extends AppCompatActivity {
 
     private Runnable updateTimerThread = new Runnable() {
         public void run() {
-            timeInMilliseconds = SystemClock.uptimeMillis() - startTime;
+//            timeInMilliseconds = SystemClock.uptimeMillis() - startTime;
             ReadTextFileFromUrl();
             if (lost) {
                 btnCapture.setVisibility(View.VISIBLE);
-                if (captured) {
-                    imgViewCrop.setVisibility(View.VISIBLE);
-                    txtImgTime.setVisibility(View.VISIBLE);
-                    txtImgTime.setText("Captured Time: " + captime);
-                }
+//                if (captured) {
+//
+//                }
             }
             else{
-                captured=false;
-                startTime = SystemClock.uptimeMillis();
+//                captured=false;
+//                startTime = SystemClock.uptimeMillis();
                 btnCapture.setVisibility(View.INVISIBLE);
                 txtImgTime.setVisibility(View.INVISIBLE);
                 imgViewCrop.setVisibility(View.INVISIBLE);
             }
-            customHandler.postDelayed(this, 5000);
+            customHandler.postDelayed(this, 1000);
         }
     };
 
 
     private void LoadImageFromUrl(String link) {
 
-        Picasso.with(this).load(link).placeholder(R.mipmap.ic_launcher).error(R.mipmap.ic_launcher).memoryPolicy(MemoryPolicy.NO_STORE)
+        Picasso.with(this).load(link).placeholder(R.mipmap.ic_launcher).error(R.mipmap.ic_launcher).memoryPolicy(MemoryPolicy.NO_STORE,MemoryPolicy.NO_CACHE).networkPolicy(NetworkPolicy.NO_CACHE)
                 .into(imgViewCrop, new com.squareup.picasso.Callback() {
                     @Override
                     public void onSuccess() {
-                        Toast.makeText(MainActivity.this, "Load Successfully!", Toast.LENGTH_SHORT).show();
+//                        Toast.makeText(MainActivity.this, "Load Successfully!", Toast.LENGTH_SHORT).show();
                     }
                     @Override
                     public void onError() {
