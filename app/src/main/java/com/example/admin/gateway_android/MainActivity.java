@@ -1,9 +1,13 @@
 package com.example.admin.gateway_android;
 
-import android.graphics.Bitmap;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Paint;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -32,10 +36,13 @@ public class MainActivity extends AppCompatActivity {
     TextView txtStt,txtImgTime;
     String url_img = "https://thesis-suitcase.000webhostapp.com/Receive/image.jpg";
 
+    NotificationCompat.Builder notification;
+    private  static  final int uniqueID=45612;
+
     boolean lost;
     private long startTime = 0L;
     long timeInMilliseconds = 0L;
-    boolean captured=false;
+
     private Handler customHandler = new Handler();
     String captime;
     @Override
@@ -51,11 +58,13 @@ public class MainActivity extends AppCompatActivity {
         customHandler.postDelayed(updateTimerThread, 1000);
         ReadTextFileFromUrl();
 
+        notification=new NotificationCompat.Builder(this);
+        notification.setAutoCancel(true);
+
         btnCapture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 LoadImageFromUrl(url_img);
-//                captured=true;
                 imgViewCrop.setVisibility(View.VISIBLE);
                 txtImgTime.setVisibility(View.VISIBLE);
                 txtImgTime.setText("Captured Time: " + captime);
@@ -77,13 +86,9 @@ public class MainActivity extends AppCompatActivity {
             ReadTextFileFromUrl();
             if (lost) {
                 btnCapture.setVisibility(View.VISIBLE);
-//                if (captured) {
-//
-//                }
+                notifyuser();
             }
             else{
-//                captured=false;
-//                startTime = SystemClock.uptimeMillis();
                 btnCapture.setVisibility(View.INVISIBLE);
                 txtImgTime.setVisibility(View.INVISIBLE);
                 imgViewCrop.setVisibility(View.INVISIBLE);
@@ -94,7 +99,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void LoadImageFromUrl(String link) {
-
         Picasso.with(this).load(link).placeholder(R.mipmap.ic_launcher).error(R.mipmap.ic_launcher).memoryPolicy(MemoryPolicy.NO_STORE,MemoryPolicy.NO_CACHE).networkPolicy(NetworkPolicy.NO_CACHE)
                 .into(imgViewCrop, new com.squareup.picasso.Callback() {
                     @Override
@@ -142,10 +146,23 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
-
             }
         }).start();
+    }
 
+    private void notifyuser(){
+        notification.setSmallIcon(R.mipmap.ic_launcher_round);
+        notification.setTicker("This is the suitcase");
+        notification.setWhen(System.currentTimeMillis());
+        notification.setContentTitle("Here is the suitcase");
+        notification.setContentText("OMG I'm lost. Please find me!!!");
+
+        Intent intent=new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent=PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        notification.setContentIntent(pendingIntent);
+
+        NotificationManager nm= (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.notify(uniqueID,notification.build());
     }
 }
 
