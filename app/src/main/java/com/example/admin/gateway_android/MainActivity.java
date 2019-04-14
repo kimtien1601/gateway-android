@@ -2,7 +2,6 @@ package com.example.admin.gateway_android;
 
 import android.app.ActivityManager;
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -18,7 +17,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -43,14 +41,13 @@ public class MainActivity extends AppCompatActivity {
     Paint paint;
     TextView txtStt,txtImgTime;
     String url_img = "https://thesis-suitcase.000webhostapp.com/Receive/image.jpg";
+    String url_txt = "https://thesis-suitcase.000webhostapp.com/Receive/period.txt";
 
     NotificationCompat.Builder notification;
     private  static  final int uniqueID=45612;
 
-    boolean lost;
+    boolean lost=false;;
     boolean observe=false;
-    private long startTime = 0L;
-    long timeInMilliseconds = 0L;
 
     private Handler customHandler = new Handler();
     String captime;
@@ -60,18 +57,21 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         AnhXa();
-        lost=false;
+
+        /*----INIT----*/
         btnCapture.setVisibility(View.INVISIBLE);
         txtImgTime.setVisibility(View.INVISIBLE);
         txtStt.setVisibility(View.INVISIBLE);
         btnStartStop.setBackgroundColor(Color.rgb(41,163,41));
         btnStartStop.setTextColor(Color.WHITE);
 
-        startTime = SystemClock.uptimeMillis();
+//        startTime = SystemClock.uptimeMillis();
 
         notification=new NotificationCompat.Builder(this);
         notification.setAutoCancel(true);
 
+
+        /*----WHEN PUSH BUTTON START/STOP OBSERVING----*/
         btnStartStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -82,26 +82,30 @@ public class MainActivity extends AppCompatActivity {
                         btnStartStop.setText("  Stop Observing  ");
                         btnStartStop.setBackgroundColor(Color.rgb(230,0,0));
 
-                        customHandler.postDelayed(updateTimerThread, 1000);
                         txtStt.setVisibility(View.VISIBLE);
 
+                        customHandler.postDelayed(updateTimerThread, 1000); //Start Handler
+
                     } else {
-                        Toast.makeText(MainActivity.this, "Please check your wifi connectivity!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Please check network connection!", Toast.LENGTH_SHORT).show();
                     }
                 }
                 else{
                     observe=false;
                     btnStartStop.setText(" Start Observing ");
                     btnStartStop.setBackgroundColor(Color.rgb(41,163,41));
-                    customHandler.removeCallbacks(updateTimerThread);
+
                     txtStt.setVisibility(View.INVISIBLE);
                     btnCapture.setVisibility(View.INVISIBLE);
                     txtImgTime.setVisibility(View.INVISIBLE);
                     imgViewCrop.setVisibility(View.INVISIBLE);
+
+                    customHandler.removeCallbacks(updateTimerThread); //Start Handler
                 }
             }
         });
 
+        /*----WHEN PUSH BUTTON CAPTURE----*/
         btnCapture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -113,15 +117,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void AnhXa() {
-        l1 = findViewById(R.id.linearLayout_1);
-        btnCapture = findViewById(R.id.buttonCapture);
-        btnStartStop=findViewById(R.id.buttonStartStop);
-        imgViewCrop = findViewById(R.id.imageViewCrop);
-        txtStt = findViewById(R.id.txtStatus);
-        txtImgTime=findViewById(R.id.txtCaptime);
-    }
-
+    /*----HANDLER FOR UPDATING----*/
     private Runnable updateTimerThread = new Runnable() {
         public void run() {
 //            timeInMilliseconds = SystemClock.uptimeMillis() - startTime;
@@ -131,7 +127,6 @@ public class MainActivity extends AppCompatActivity {
                 if (!isForeground(getApplicationContext())) {
                     notifyuser();
                 }
-
             }
             else{
                 btnCapture.setVisibility(View.INVISIBLE);
@@ -142,28 +137,24 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-
-    private void LoadImageFromUrl(String link) {
-        Picasso.with(this).load(link).placeholder(R.mipmap.ic_launcher).error(R.mipmap.ic_launcher).memoryPolicy(MemoryPolicy.NO_STORE,MemoryPolicy.NO_CACHE).networkPolicy(NetworkPolicy.NO_CACHE)
-                .into(imgViewCrop, new com.squareup.picasso.Callback() {
-                    @Override
-                    public void onSuccess() {
-//                        Toast.makeText(MainActivity.this, "Load Successfully!", Toast.LENGTH_SHORT).show();
-                    }
-                    @Override
-                    public void onError() {
-                        Toast.makeText(MainActivity.this, "Database not available", Toast.LENGTH_SHORT).show();
-                    }
-                });
+    /*----CREATE VARIABLE FROM LAYOUT----*/
+    private void AnhXa() {
+        l1 = findViewById(R.id.linearLayout_1);
+        btnCapture = findViewById(R.id.buttonCapture);
+        btnStartStop=findViewById(R.id.buttonStartStop);
+        imgViewCrop = findViewById(R.id.imageViewCrop);
+        txtStt = findViewById(R.id.txtStatus);
+        txtImgTime=findViewById(R.id.txtCaptime);
     }
 
+    /*----CHECK SUITCASE STATUS----*/
     private void ReadTextFileFromUrl() {
         new Thread(new Runnable(){
             public void run(){
                 String result="";
                 try {
                     // Create a URL for the desired page
-                    URL url = new URL("https://thesis-suitcase.000webhostapp.com/Receive/period.txt"); //My text file location
+                    URL url = new URL(url_txt); //My text file location
                     //First open the connection
                     HttpURLConnection conn=(HttpURLConnection) url.openConnection();
                     conn.setConnectTimeout(6000); // timing out in a minute
@@ -195,17 +186,30 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void notifyuser(){
-        String CHANNEL_ID;
-        CharSequence name;
+    /*----LOAD IMAGE TO IMAGE VIEW----*/
+    private void LoadImageFromUrl(String link) {
+        Picasso.with(this).load(link).placeholder(R.mipmap.ic_launcher).error(R.mipmap.ic_launcher).memoryPolicy(MemoryPolicy.NO_STORE,MemoryPolicy.NO_CACHE).networkPolicy(NetworkPolicy.NO_CACHE)
+                .into(imgViewCrop, new com.squareup.picasso.Callback() {
+                    @Override
+                    public void onSuccess() {
+//                        Toast.makeText(MainActivity.this, "Load Successfully!", Toast.LENGTH_SHORT).show();
+                    }
+                    @Override
+                    public void onError() {
+                        Toast.makeText(MainActivity.this, "Database not available", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
 
+    /*----CREATE NOTIFICATION WHEN LOST----*/
+    private void notifyuser(){
         Intent intent=new Intent(this, MainActivity.class);
         PendingIntent pendingIntent=PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
         notification.setSmallIcon(R.drawable.ic_warning_black_24dp);
         notification.setTicker("This is the suitcase");
         notification.setWhen(System.currentTimeMillis());
-        notification.setContentTitle("Here is the suitcase");
+        notification.setContentTitle("This is the suitcase");
         notification.setContentText("OMG I'm lost. Please find me!!!");
         notification.setCategory(NotificationCompat.CATEGORY_MESSAGE);
         notification.setPriority(NotificationCompat.PRIORITY_MAX);
@@ -217,7 +221,20 @@ public class MainActivity extends AppCompatActivity {
         nm.notify(uniqueID,notification.build());
     }
 
+    /*----CHECK WHETHER APP IS IN FOREGROUND (FOR DISCARDING NOTIFICATION)----*/
+    private static boolean isForeground(Context context) {
+        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> tasks = am.getRunningAppProcesses();
+        final String packageName = context.getPackageName();
+        for (ActivityManager.RunningAppProcessInfo appProcess : tasks) {
+            if (ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND == appProcess.importance && packageName.equals(appProcess.processName)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
+    /*----CHECK NETWORK CONNECTION----*/
     public static boolean isConnectedToNetwork(Context context) {
         ConnectivityManager connectivityManager =
                 (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -229,18 +246,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return isConnected;
-    }
-
-    private static boolean isForeground(Context context) {
-        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> tasks = am.getRunningAppProcesses();
-        final String packageName = context.getPackageName();
-        for (ActivityManager.RunningAppProcessInfo appProcess : tasks) {
-            if (ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND == appProcess.importance && packageName.equals(appProcess.processName)) {
-                return true;
-            }
-        }
-        return false;
     }
 }
 
