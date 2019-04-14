@@ -1,5 +1,6 @@
 package com.example.admin.gateway_android;
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -12,6 +13,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -30,7 +32,7 @@ import java.net.URL;
 public class MainActivity extends AppCompatActivity {
 
     LinearLayout l1;
-    Button btnCapture;
+    Button btnCapture,btnStartStop;
     ImageView imgViewCrop;
     Paint paint;
     TextView txtStt,txtImgTime;
@@ -40,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
     private  static  final int uniqueID=45612;
 
     boolean lost;
+    boolean observe=false;
     private long startTime = 0L;
     long timeInMilliseconds = 0L;
 
@@ -54,12 +57,33 @@ public class MainActivity extends AppCompatActivity {
         lost=false;
         btnCapture.setVisibility(View.INVISIBLE);
         txtImgTime.setVisibility(View.INVISIBLE);
+        txtStt.setVisibility(View.INVISIBLE);
+
         startTime = SystemClock.uptimeMillis();
-        customHandler.postDelayed(updateTimerThread, 1000);
-        ReadTextFileFromUrl();
 
         notification=new NotificationCompat.Builder(this);
         notification.setAutoCancel(true);
+
+        btnStartStop.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (observe==false){
+                    observe=true;
+                    btnStartStop.setText("Stop Observing");
+                    customHandler.postDelayed(updateTimerThread, 1000);
+                    txtStt.setVisibility(View.VISIBLE);
+                }
+                else{
+                    observe=false;
+                    btnStartStop.setText("Start Observing");
+                    customHandler.removeCallbacks(updateTimerThread);
+                    txtStt.setVisibility(View.INVISIBLE);
+                    btnCapture.setVisibility(View.INVISIBLE);
+                    txtImgTime.setVisibility(View.INVISIBLE);
+                    imgViewCrop.setVisibility(View.INVISIBLE);
+                }
+            }
+        });
 
         btnCapture.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -75,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
     private void AnhXa() {
         l1 = findViewById(R.id.linearLayout_1);
         btnCapture = findViewById(R.id.buttonCapture);
+        btnStartStop=findViewById(R.id.buttonStartStop);
         imgViewCrop = findViewById(R.id.imageViewCrop);
         txtStt = findViewById(R.id.txtStatus);
         txtImgTime=findViewById(R.id.txtCaptime);
@@ -93,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
                 txtImgTime.setVisibility(View.INVISIBLE);
                 imgViewCrop.setVisibility(View.INVISIBLE);
             }
-            customHandler.postDelayed(this, 1000);
+            customHandler.postDelayed(this, 5000);
         }
     };
 
@@ -151,15 +176,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void notifyuser(){
+        Intent intent=new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent=PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
         notification.setSmallIcon(R.mipmap.ic_launcher_round);
         notification.setTicker("This is the suitcase");
         notification.setWhen(System.currentTimeMillis());
         notification.setContentTitle("Here is the suitcase");
         notification.setContentText("OMG I'm lost. Please find me!!!");
-
-        Intent intent=new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent=PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        notification.setCategory(Notification.CATEGORY_PROMO);
+//        notification.addAction(android.R.drawable.ic_menu_view,"View details",pendingIntent);
+        notification.setPriority(Notification.PRIORITY_HIGH);
         notification.setContentIntent(pendingIntent);
+//        notification.setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
 
         NotificationManager nm= (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         nm.notify(uniqueID,notification.build());
