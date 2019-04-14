@@ -1,11 +1,16 @@
 package com.example.admin.gateway_android;
 
+import android.app.ActivityManager;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.graphics.Paint;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
@@ -28,6 +33,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -58,6 +64,8 @@ public class MainActivity extends AppCompatActivity {
         btnCapture.setVisibility(View.INVISIBLE);
         txtImgTime.setVisibility(View.INVISIBLE);
         txtStt.setVisibility(View.INVISIBLE);
+        btnStartStop.setBackgroundColor(Color.rgb(41,163,41));
+        btnStartStop.setTextColor(Color.WHITE);
 
         startTime = SystemClock.uptimeMillis();
 
@@ -68,14 +76,23 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (observe==false){
-                    observe=true;
-                    btnStartStop.setText("Stop Observing");
-                    customHandler.postDelayed(updateTimerThread, 1000);
-                    txtStt.setVisibility(View.VISIBLE);
+                    Context context=view.getContext();
+                    if (isConnectedToNetwork(context)) {
+                        observe=true;
+                        btnStartStop.setText("  Stop Observing  ");
+                        btnStartStop.setBackgroundColor(Color.rgb(230,0,0));
+
+                        customHandler.postDelayed(updateTimerThread, 1000);
+                        txtStt.setVisibility(View.VISIBLE);
+
+                    } else {
+                        Toast.makeText(MainActivity.this, "Please check your wifi connectivity!", Toast.LENGTH_SHORT).show();
+                    }
                 }
                 else{
                     observe=false;
-                    btnStartStop.setText("Start Observing");
+                    btnStartStop.setText(" Start Observing ");
+                    btnStartStop.setBackgroundColor(Color.rgb(41,163,41));
                     customHandler.removeCallbacks(updateTimerThread);
                     txtStt.setVisibility(View.INVISIBLE);
                     btnCapture.setVisibility(View.INVISIBLE);
@@ -111,14 +128,17 @@ public class MainActivity extends AppCompatActivity {
             ReadTextFileFromUrl();
             if (lost) {
                 btnCapture.setVisibility(View.VISIBLE);
-                notifyuser();
+                if (!isForeground(getApplicationContext())) {
+                    notifyuser();
+                }
+
             }
             else{
                 btnCapture.setVisibility(View.INVISIBLE);
                 txtImgTime.setVisibility(View.INVISIBLE);
                 imgViewCrop.setVisibility(View.INVISIBLE);
             }
-            customHandler.postDelayed(this, 5000);
+            customHandler.postDelayed(this, 10000);
         }
     };
 
@@ -161,12 +181,12 @@ public class MainActivity extends AppCompatActivity {
                     public void run() {
                         int period = Integer.parseInt(finalResult);
                         if (period==0) {
-                            txtStt.setText("Still tracking");
+                            txtStt.setText("Status: Still tracking");
                             lost=false;
                         }
                         else
                         {
-                            txtStt.setText("Lost " + finalResult + "s");
+                            txtStt.setText("Status: Lost " + finalResult + "s");
                             lost=true;
                         }
                     }
@@ -176,22 +196,51 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void notifyuser(){
+        String CHANNEL_ID;
+        CharSequence name;
+
         Intent intent=new Intent(this, MainActivity.class);
         PendingIntent pendingIntent=PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        notification.setSmallIcon(R.mipmap.ic_launcher_round);
+        notification.setSmallIcon(R.drawable.ic_warning_black_24dp);
         notification.setTicker("This is the suitcase");
         notification.setWhen(System.currentTimeMillis());
         notification.setContentTitle("Here is the suitcase");
         notification.setContentText("OMG I'm lost. Please find me!!!");
-        notification.setCategory(Notification.CATEGORY_PROMO);
-//        notification.addAction(android.R.drawable.ic_menu_view,"View details",pendingIntent);
-        notification.setPriority(Notification.PRIORITY_HIGH);
+        notification.setCategory(NotificationCompat.CATEGORY_MESSAGE);
+        notification.setPriority(NotificationCompat.PRIORITY_MAX);
         notification.setContentIntent(pendingIntent);
+        notification.setDefaults(Notification.DEFAULT_ALL);
 //        notification.setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
-
+//        notification.addAction(android.R.drawable.ic_menu_view,"View details",pendingIntent);
         NotificationManager nm= (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         nm.notify(uniqueID,notification.build());
+    }
+
+
+    public static boolean isConnectedToNetwork(Context context) {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        boolean isConnected = false;
+        if (connectivityManager != null) {
+            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
+            isConnected = (activeNetwork != null) && (activeNetwork.isConnectedOrConnecting());
+        }
+
+        return isConnected;
+    }
+
+    private static boolean isForeground(Context context) {
+        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> tasks = am.getRunningAppProcesses();
+        final String packageName = context.getPackageName();
+        for (ActivityManager.RunningAppProcessInfo appProcess : tasks) {
+            if (ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND == appProcess.importance && packageName.equals(appProcess.processName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
