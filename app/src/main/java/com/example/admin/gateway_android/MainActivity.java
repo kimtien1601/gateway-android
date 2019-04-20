@@ -11,7 +11,6 @@ import android.graphics.Paint;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Handler;
-import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -84,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
                         txtStt.setVisibility(View.VISIBLE);
 
-                        customHandler.postDelayed(updateTimerThread, 1000); //Start Handler
+                        customHandler.postDelayed(updateTimerThread, 1); //Start Handler
 
                     } else {
                         Toast.makeText(MainActivity.this, "Please check network connection!", Toast.LENGTH_SHORT).show();
@@ -122,18 +121,18 @@ public class MainActivity extends AppCompatActivity {
         public void run() {
 //            timeInMilliseconds = SystemClock.uptimeMillis() - startTime;
             ReadTextFileFromUrl();
-            if (lost) {
-                btnCapture.setVisibility(View.VISIBLE);
-                if (!isForeground(getApplicationContext())) {
-                    notifyuser();
-                }
-            }
-            else{
-                btnCapture.setVisibility(View.INVISIBLE);
-                txtImgTime.setVisibility(View.INVISIBLE);
-                imgViewCrop.setVisibility(View.INVISIBLE);
-            }
-            customHandler.postDelayed(this, 10000);
+//            if (lost) {
+//                btnCapture.setVisibility(View.VISIBLE);
+//                if (!isForeground(getApplicationContext())) {
+//                    notifier();
+//                }
+//            }
+//            else{
+//                btnCapture.setVisibility(View.INVISIBLE);
+//                txtImgTime.setVisibility(View.INVISIBLE);
+//                imgViewCrop.setVisibility(View.INVISIBLE);
+//            }
+            customHandler.postDelayed(this, 30000);
         }
     };
 
@@ -174,11 +173,18 @@ public class MainActivity extends AppCompatActivity {
                         if (period==0) {
                             txtStt.setText("Status: Still tracking");
                             lost=false;
+                            btnCapture.setVisibility(View.INVISIBLE);
+                            txtImgTime.setVisibility(View.INVISIBLE);
+                            imgViewCrop.setVisibility(View.INVISIBLE);
                         }
                         else
                         {
                             txtStt.setText("Status: Lost " + finalResult + "s");
                             lost=true;
+                            btnCapture.setVisibility(View.VISIBLE);
+                            if (!isForeground(getApplicationContext())) {
+                                notifier();
+                            }
                         }
                     }
                 });
@@ -202,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /*----CREATE NOTIFICATION WHEN LOST----*/
-    private void notifyuser(){
+    private void notifier(){
         Intent intent=new Intent(this, MainActivity.class);
         PendingIntent pendingIntent=PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
