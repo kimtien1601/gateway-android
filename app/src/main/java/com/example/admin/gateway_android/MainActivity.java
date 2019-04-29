@@ -26,11 +26,19 @@ import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.NetworkPolicy;
 import com.squareup.picasso.Picasso;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
+
+import io.socket.client.IO;
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,13 +49,15 @@ public class MainActivity extends AppCompatActivity {
     TextView txtStt,txtImgTime;
     String url_img = "https://thesis-suitcase.000webhostapp.com/Receive/image.jpg";
     String url_txt = "https://thesis-suitcase.000webhostapp.com/Receive/period.txt";
+    String url_heroku="https://tien-xinhdep-pro-server.herokuapp.com";
+    //http://192.168.1.151:3000/
 
     NotificationCompat.Builder notification;
     private  static  final int uniqueID=45612;
 
     boolean lost=false;;
     boolean observe=false;
-
+    private Socket mSocket;
     private Handler customHandler = new Handler();
     String captime;
     @Override
@@ -63,12 +73,14 @@ public class MainActivity extends AppCompatActivity {
         txtStt.setVisibility(View.INVISIBLE);
         btnStartStop.setBackgroundColor(Color.rgb(41,163,41));
         btnStartStop.setTextColor(Color.WHITE);
-
 //        startTime = SystemClock.uptimeMillis();
 
         notification=new NotificationCompat.Builder(this);
         notification.setAutoCancel(true);
 
+        //Kết nối đến Server
+        Connect2Server();
+        mSocket.on("server-send-ok", onReceiveStatus);
 
         /*----WHEN PUSH BUTTON START/STOP OBSERVING----*/
         btnStartStop.setOnClickListener(new View.OnClickListener() {
@@ -120,18 +132,9 @@ public class MainActivity extends AppCompatActivity {
     private Runnable updateTimerThread = new Runnable() {
         public void run() {
 //            timeInMilliseconds = SystemClock.uptimeMillis() - startTime;
+            mSocket.emit("client-request-info");
+            mSocket.on("server-send-info", mydata);
             ReadTextFileFromUrl();
-//            if (lost) {
-//                btnCapture.setVisibility(View.VISIBLE);
-//                if (!isForeground(getApplicationContext())) {
-//                    notifier();
-//                }
-//            }
-//            else{
-//                btnCapture.setVisibility(View.INVISIBLE);
-//                txtImgTime.setVisibility(View.INVISIBLE);
-//                imgViewCrop.setVisibility(View.INVISIBLE);
-//            }
             customHandler.postDelayed(this, 30000);
         }
     };
@@ -253,5 +256,63 @@ public class MainActivity extends AppCompatActivity {
 
         return isConnected;
     }
+
+    /*----HEROKU CONNECTION----*/
+    private void Connect2Server(){
+        try {
+//            mSocket = IO.socket("http://192.168.1.151:3000/");
+            mSocket = IO.socket(url_heroku);
+        } catch (URISyntaxException e) {
+            Toast.makeText(this, "Server fail to start...", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+        mSocket.connect();
+    }
+
+    /*----READ DATA FROM HEROKU----*/
+    private Emitter.Listener mydata = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject object = (JSONObject)args[0];
+                    try {
+                        int result = object.getInt("suitcase");
+                        if (result>0) {
+                            txtCurrentPosition.setText("lost "+result+"s");
+                        } else {
+                            txtCurrentPosition.setText("still tracking");
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+    };
+
+    /*----WHEN SERVER HAS RECEIVED DATA FROM RASPBERRY----*/
+    private Emitter.Listener onReceiveStatus = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject object = (JSONObject)args[0];
+                    try {
+                        boolean status =object.getBoolean("status");
+                        if (status){
+                            Toast.makeText(MainActivity.this, "Info has been sent to Server", Toast.LENGTH_SHORT).show();
+                        }else{
+                            Toast.makeText(MainActivity.this, "Info Lost", Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+    };
 }
 
