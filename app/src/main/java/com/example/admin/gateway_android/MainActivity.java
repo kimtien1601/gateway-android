@@ -81,15 +81,17 @@ public class MainActivity extends AppCompatActivity {
         notification=new NotificationCompat.Builder(this);
         notification.setAutoCancel(true);
 
-        //Kết nối đến Server
-        Connect2Server();
-        mSocket.on("server-send-ok", onReceiveStatus);
+
 
         /*----WHEN PUSH BUTTON START/STOP OBSERVING----*/
         btnStartStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if (observe==false){
+                    //Kết nối đến Server
+                    Connect2Server();
+                    mSocket.on("server-send-ok", onReceiveStatus);
+
                     Context context=view.getContext();
                     if (isConnectedToNetwork(context)) {
                         observe=true;
@@ -201,11 +203,13 @@ public class MainActivity extends AppCompatActivity {
         try {
 //            mSocket = IO.socket("http://192.168.1.7:3000/");
             mSocket = IO.socket(url_heroku);
+            mSocket.connect();
+            Toast.makeText(this, "Connected to Server!", Toast.LENGTH_SHORT).show();
         } catch (URISyntaxException e) {
             Toast.makeText(this, "Server fail to start...", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
-        mSocket.connect();
+
     }
 
     /*----READ DATA FROM HEROKU----*/
