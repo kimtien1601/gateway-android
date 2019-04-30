@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
     ImageView imgViewCrop;
     Paint paint;
     TextView txtStt,txtImgTime;
-    String url_heroku="https://tien-xinhdep-pro-server.herokuapp.com";
+    String url_heroku="https://suitcase-server.herokuapp.com/";
 
     NotificationCompat.Builder notification;
     private  static  final int uniqueID=45612;
@@ -199,8 +199,8 @@ public class MainActivity extends AppCompatActivity {
     /*----HEROKU CONNECTION----*/
     private void Connect2Server(){
         try {
-            mSocket = IO.socket("http://192.168.1.7:3000/");
-//            mSocket = IO.socket(url_heroku);
+//            mSocket = IO.socket("http://192.168.1.7:3000/");
+            mSocket = IO.socket(url_heroku);
         } catch (URISyntaxException e) {
             Toast.makeText(this, "Server fail to start...", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
