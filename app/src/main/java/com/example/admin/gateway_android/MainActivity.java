@@ -6,6 +6,8 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.net.ConnectivityManager;
@@ -14,6 +16,7 @@ import android.os.Handler;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -47,10 +50,7 @@ public class MainActivity extends AppCompatActivity {
     ImageView imgViewCrop;
     Paint paint;
     TextView txtStt,txtImgTime;
-    String url_img = "https://thesis-suitcase.000webhostapp.com/Receive/image.jpg";
-    String url_txt = "https://thesis-suitcase.000webhostapp.com/Receive/period.txt";
     String url_heroku="https://tien-xinhdep-pro-server.herokuapp.com";
-    //http://192.168.1.151:3000/
 
     NotificationCompat.Builder notification;
     private  static  final int uniqueID=45612;
@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     boolean observe=false;
     private Socket mSocket;
     private Handler customHandler = new Handler();
+
     String captime;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +69,8 @@ public class MainActivity extends AppCompatActivity {
         AnhXa();
 
         /*----INIT----*/
+        Connect2Server();
+
         btnCapture.setVisibility(View.INVISIBLE);
         txtImgTime.setVisibility(View.INVISIBLE);
         txtStt.setVisibility(View.INVISIBLE);
@@ -97,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
 
                         customHandler.postDelayed(updateTimerThread, 1); //Start Handler
 
+
                     } else {
                         Toast.makeText(MainActivity.this, "Please check network connection!", Toast.LENGTH_SHORT).show();
                     }
@@ -116,14 +120,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        /*----WHEN PUSH BUTTON CAPTURE----*/
+        /*----BUTTON CAPTURE----*/
         btnCapture.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                LoadImageFromUrl(url_img);
-                imgViewCrop.setVisibility(View.VISIBLE);
-                txtImgTime.setVisibility(View.VISIBLE);
-                txtImgTime.setText("Captured Time: " + captime);
+                mSocket.emit("client-request-img");
+                mSocket.on("server-send-img", mydata_img);
             }
         });
     }
@@ -131,11 +133,9 @@ public class MainActivity extends AppCompatActivity {
     /*----HANDLER FOR UPDATING----*/
     private Runnable updateTimerThread = new Runnable() {
         public void run() {
-//            timeInMilliseconds = SystemClock.uptimeMillis() - startTime;
             mSocket.emit("client-request-info");
             mSocket.on("server-send-info", mydata);
-            ReadTextFileFromUrl();
-            customHandler.postDelayed(this, 30000);
+            customHandler.postDelayed(this, 1000);
         }
     };
 
@@ -147,67 +147,6 @@ public class MainActivity extends AppCompatActivity {
         imgViewCrop = findViewById(R.id.imageViewCrop);
         txtStt = findViewById(R.id.txtStatus);
         txtImgTime=findViewById(R.id.txtCaptime);
-    }
-
-    /*----CHECK SUITCASE STATUS----*/
-    private void ReadTextFileFromUrl() {
-        new Thread(new Runnable(){
-            public void run(){
-                String result="";
-                try {
-                    // Create a URL for the desired page
-                    URL url = new URL(url_txt); //My text file location
-                    //First open the connection
-                    HttpURLConnection conn=(HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(6000); // timing out in a minute
-
-                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-
-                    result=in.readLine();
-                    captime=in.readLine();
-                    in.close();
-                } catch (Exception e) {
-                    Log.d("MyTag", e.toString());
-                }
-                final String finalResult = result;
-                runOnUiThread(new Runnable(){
-                    public void run() {
-                        int period = Integer.parseInt(finalResult);
-                        if (period==0) {
-                            txtStt.setText("Status: Still tracking");
-                            lost=false;
-                            btnCapture.setVisibility(View.INVISIBLE);
-                            txtImgTime.setVisibility(View.INVISIBLE);
-                            imgViewCrop.setVisibility(View.INVISIBLE);
-                        }
-                        else
-                        {
-                            txtStt.setText("Status: Lost " + finalResult + "s");
-                            lost=true;
-                            btnCapture.setVisibility(View.VISIBLE);
-                            if (!isForeground(getApplicationContext())) {
-                                notifier();
-                            }
-                        }
-                    }
-                });
-            }
-        }).start();
-    }
-
-    /*----LOAD IMAGE TO IMAGE VIEW----*/
-    private void LoadImageFromUrl(String link) {
-        Picasso.with(this).load(link).placeholder(R.mipmap.ic_launcher).error(R.mipmap.ic_launcher).memoryPolicy(MemoryPolicy.NO_STORE,MemoryPolicy.NO_CACHE).networkPolicy(NetworkPolicy.NO_CACHE)
-                .into(imgViewCrop, new com.squareup.picasso.Callback() {
-                    @Override
-                    public void onSuccess() {
-//                        Toast.makeText(MainActivity.this, "Load Successfully!", Toast.LENGTH_SHORT).show();
-                    }
-                    @Override
-                    public void onError() {
-                        Toast.makeText(MainActivity.this, "Database not available", Toast.LENGTH_SHORT).show();
-                    }
-                });
     }
 
     /*----CREATE NOTIFICATION WHEN LOST----*/
@@ -260,8 +199,8 @@ public class MainActivity extends AppCompatActivity {
     /*----HEROKU CONNECTION----*/
     private void Connect2Server(){
         try {
-//            mSocket = IO.socket("http://192.168.1.151:3000/");
-            mSocket = IO.socket(url_heroku);
+            mSocket = IO.socket("http://192.168.1.7:3000/");
+//            mSocket = IO.socket(url_heroku);
         } catch (URISyntaxException e) {
             Toast.makeText(this, "Server fail to start...", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
@@ -277,13 +216,52 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     JSONObject object = (JSONObject)args[0];
+                    String lostTime;
+                    int isTracking;
                     try {
-                        int result = object.getInt("suitcase");
-                        if (result>0) {
-                            txtCurrentPosition.setText("lost "+result+"s");
-                        } else {
-                            txtCurrentPosition.setText("still tracking");
+                        isTracking=(int)object.get("isTracking");
+                        lostTime= object.getString("lostTime");
+                        if (isTracking==1) {
+                            txtStt.setText("Tracking");
+                            imgViewCrop.setVisibility(View.INVISIBLE);
+                            txtImgTime.setVisibility(View.INVISIBLE);
+                            btnCapture.setVisibility(View.INVISIBLE);
                         }
+                        else {
+                            txtStt.setText("Lost "+lostTime+"s");
+                            btnCapture.setVisibility(View.VISIBLE);
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+    };
+
+    private Emitter.Listener mydata_img = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject object = (JSONObject)args[0];
+                    String img_text, captime;
+
+                    try {
+                        img_text = object.getString("Image");
+                        captime=object.getString("CapTime");
+                        txtImgTime.setText("Captured Time: " +captime);
+
+                        String encodedString=img_text.substring(img_text.indexOf(",")+1,img_text.length());
+                        byte[] decodedString = Base64.decode(encodedString, Base64.DEFAULT);
+                        Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                        imgViewCrop.setImageBitmap(decodedByte);
+
+                        imgViewCrop.setVisibility(View.VISIBLE);
+                        txtImgTime.setVisibility(View.VISIBLE);
+
+
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
