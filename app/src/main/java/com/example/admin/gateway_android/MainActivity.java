@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
     ImageView imgViewCrop;
     Paint paint;
     TextView txtStt,txtImgTime;
-    String url_heroku="https://suitcase-server.herokuapp.com/";
+    String url_heroku="https://suitcase-server.herokuapp.com";
 
     NotificationCompat.Builder notification;
     private  static  final int uniqueID=45612;
@@ -69,7 +69,6 @@ public class MainActivity extends AppCompatActivity {
         AnhXa();
 
         /*----INIT----*/
-        Connect2Server();
 
         btnCapture.setVisibility(View.INVISIBLE);
         txtImgTime.setVisibility(View.INVISIBLE);
@@ -100,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
 
                         txtStt.setVisibility(View.VISIBLE);
 
-                        customHandler.postDelayed(updateTimerThread, 1); //Start Handler
+                        customHandler.postDelayed(updateTimerThread, 1000); //Start Handler
 
 
                     } else {
@@ -137,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
         public void run() {
             mSocket.emit("client-request-info");
             mSocket.on("server-send-info", mydata);
+
             customHandler.postDelayed(this, 1000);
         }
     };
@@ -225,6 +225,7 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         isTracking=(int)object.get("isTracking");
                         lostTime= object.getString("lostTime");
+
                         if (isTracking==1) {
                             txtStt.setText("Tracking");
                             imgViewCrop.setVisibility(View.INVISIBLE);
@@ -234,6 +235,9 @@ public class MainActivity extends AppCompatActivity {
                         else {
                             txtStt.setText("Lost "+lostTime+"s");
                             btnCapture.setVisibility(View.VISIBLE);
+                            if (!isForeground(getApplicationContext())) {
+                                notifier();
+                            }
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
