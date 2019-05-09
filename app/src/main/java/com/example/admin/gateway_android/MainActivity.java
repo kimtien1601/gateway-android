@@ -55,8 +55,8 @@ public class MainActivity extends AppCompatActivity {
     NotificationCompat.Builder notification;
     private  static  final int uniqueID=45612;
 
-    boolean lost=false;;
     boolean observe=false;
+    boolean suitcaseOFF=false;
     private Socket mSocket;
     private Handler customHandler = new Handler();
 
@@ -87,36 +87,38 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (observe==false){
-                    //Kết nối đến Server
-                    Connect2Server();
-                    mSocket.on("server-send-ok", onReceiveStatus);
-
                     Context context=view.getContext();
                     if (isConnectedToNetwork(context)) {
                         observe=true;
+                        //Kết nối đến Server
+                        Connect2Server();
+//                        mSocket.on("server-send-ok", onReceiveStatus);
+                        mSocket.emit("android-on",true);
+
                         btnStartStop.setText("  Stop Observing  ");
                         btnStartStop.setBackgroundColor(Color.rgb(230,0,0));
 
+                        txtStt.setText("Status: Suitcase off");
                         txtStt.setVisibility(View.VISIBLE);
 
                         customHandler.postDelayed(updateTimerThread, 1000); //Start Handler
-
 
                     } else {
                         Toast.makeText(MainActivity.this, "Please check network connection!", Toast.LENGTH_SHORT).show();
                     }
                 }
-                else{
-                    observe=false;
+                else {
+                    mSocket.disconnect();
+                    observe = false;
+                    customHandler.removeCallbacks(updateTimerThread); //Start Handler
+
                     btnStartStop.setText(" Start Observing ");
-                    btnStartStop.setBackgroundColor(Color.rgb(41,163,41));
+                    btnStartStop.setBackgroundColor(Color.rgb(41, 163, 41));
 
                     txtStt.setVisibility(View.INVISIBLE);
                     btnCapture.setVisibility(View.INVISIBLE);
                     txtImgTime.setVisibility(View.INVISIBLE);
                     imgViewCrop.setVisibility(View.INVISIBLE);
-
-                    customHandler.removeCallbacks(updateTimerThread); //Start Handler
                 }
             }
         });
@@ -134,10 +136,12 @@ public class MainActivity extends AppCompatActivity {
     /*----HANDLER FOR UPDATING----*/
     private Runnable updateTimerThread = new Runnable() {
         public void run() {
+            mSocket.on("suitcase-off",suitcase);
             mSocket.emit("client-request-info");
+
             mSocket.on("server-send-info", mydata);
 
-            customHandler.postDelayed(this, 1000);
+            customHandler.postDelayed(this, 2000);
         }
     };
 
@@ -201,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
     /*----HEROKU CONNECTION----*/
     private void Connect2Server(){
         try {
-//            mSocket = IO.socket("http://192.168.1.7:3000/");
+//            mSocket = IO.socket("http://192.168.0.103:3000/");
             mSocket = IO.socket(url_heroku);
             mSocket.connect();
             Toast.makeText(this, "Connected to Server!", Toast.LENGTH_SHORT).show();
@@ -223,20 +227,24 @@ public class MainActivity extends AppCompatActivity {
                     String lostTime;
                     int isTracking;
                     try {
-                        isTracking=(int)object.get("isTracking");
-                        lostTime= object.getString("lostTime");
+                        if (suitcaseOFF==false) {
+                            if (object != null) {
+                                isTracking = (int) object.get("isTracking");
+                                lostTime = object.getString("lostTime");
 
-                        if (isTracking==1) {
-                            txtStt.setText("Tracking");
-                            imgViewCrop.setVisibility(View.INVISIBLE);
-                            txtImgTime.setVisibility(View.INVISIBLE);
-                            btnCapture.setVisibility(View.INVISIBLE);
-                        }
-                        else {
-                            txtStt.setText("Lost "+lostTime+"s");
-                            btnCapture.setVisibility(View.VISIBLE);
-                            if (!isForeground(getApplicationContext())) {
-                                notifier();
+
+                                if (isTracking == 1) {
+                                    txtStt.setText("Tracking");
+                                    imgViewCrop.setVisibility(View.INVISIBLE);
+                                    txtImgTime.setVisibility(View.INVISIBLE);
+                                    btnCapture.setVisibility(View.INVISIBLE);
+                                } else {
+                                    txtStt.setText("Lost " + lostTime + "s");
+                                    btnCapture.setVisibility(View.VISIBLE);
+                                    if (!isForeground(getApplicationContext())) {
+                                        notifier();
+                                    }
+                                }
                             }
                         }
                     } catch (JSONException e) {
@@ -277,7 +285,30 @@ public class MainActivity extends AppCompatActivity {
             });
         }
     };
+    private Emitter.Listener suitcase = new Emitter.Listener() {
+        @Override
+        public void call(final Object... args) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONObject object = (JSONObject)args[0];
+                    try {
+                        suitcaseOFF =object.getBoolean("status");
+//                        Toast.makeText(MainActivity.this, "Received suitcase off "+suitcaseOFF, Toast.LENGTH_SHORT).show();
+                        if (suitcaseOFF){
 
+                            txtStt.setText("Status: Suitcase off");
+                            btnCapture.setVisibility(View.INVISIBLE);
+                            txtImgTime.setVisibility(View.INVISIBLE);
+                            imgViewCrop.setVisibility(View.INVISIBLE);
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+    };
     /*----WHEN SERVER HAS RECEIVED DATA FROM RASPBERRY----*/
     private Emitter.Listener onReceiveStatus = new Emitter.Listener() {
         @Override
