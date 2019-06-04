@@ -137,11 +137,9 @@ public class MainActivity extends AppCompatActivity {
     private Runnable updateTimerThread = new Runnable() {
         public void run() {
             mSocket.on("suitcase-off",suitcase);
-            mSocket.emit("client-request-info");
-
-            mSocket.on("server-send-info", mydata);
-
-            customHandler.postDelayed(this, 2000);
+            mSocket.emit("client-request-status");
+            mSocket.on("server-send-status", mydata);
+            customHandler.postDelayed(this, 1000);
         }
     };
 
@@ -205,15 +203,13 @@ public class MainActivity extends AppCompatActivity {
     /*----HEROKU CONNECTION----*/
     private void Connect2Server(){
         try {
-//            mSocket = IO.socket("http://192.168.0.103:3000/");
             mSocket = IO.socket(url_heroku);
             mSocket.connect();
             Toast.makeText(this, "Connected to Server!", Toast.LENGTH_SHORT).show();
         } catch (URISyntaxException e) {
-            Toast.makeText(this, "Server fail to start...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Server fails to start...", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
-
     }
 
     /*----READ DATA FROM HEROKU----*/
